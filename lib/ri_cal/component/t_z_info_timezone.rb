@@ -28,14 +28,14 @@ class RiCal::Component::TZInfoTimezone < RiCal::Component::Timezone
     end
     
     def period_local_end(period)
-      (period.local_end || DateTime.parse("99990101T000000")).strftime("%Y%m%dT%H%M%S")
+      (period.local_ends_at.try(:to_datetime) || DateTime.parse("99990101T000000")).strftime("%Y%m%dT%H%M%S")
     end
     
     # This assumes a 1 hour shift which is why we use the previous period local end when
     # possible
     def period_local_start(period)
       shift = daylight? ? Rational(-1, 24) : Rational(1, 24)
-      ((period.local_start || DateTime.parse("16010101T000000")) + shift).strftime("%Y%m%dT%H%M%S")
+      ((period.local_starts_at.try(:to_datetime) || DateTime.parse("16010101T000000")) + shift).strftime("%Y%m%dT%H%M%S")
     end
 
     def add_period(this_period)
@@ -143,11 +143,11 @@ class RiCal::Component::TZInfoTimezone < RiCal::Component::Timezone
     periods = Periods.new
     period = initial_period = tzinfo_timezone.period_for_utc(utc_start)
      #start with the period before the one containing utc_start
-    prev_period = period.utc_start && tzinfo_timezone.period_for_utc(period.utc_start - 1)
+    prev_period = period.starts_at && tzinfo_timezone.period_for_utc(period.starts_at.to_datetime - 1)
     period = prev_period if prev_period
-    while period && period.utc_start && period.utc_start < utc_end
+    while period && period.starts_at && period.starts_at.to_datetime < utc_end
       periods.add_period(period)
-      period = period.utc_end && tzinfo_timezone.period_for_utc(period.utc_end + 1)
+      period = period.ends_at && tzinfo_timezone.period_for_utc(period.ends_at.to_datetime + 1)
     end
     periods.add_period(initial_period, :force) if periods.empty?
     periods.export_to(export_stream)
